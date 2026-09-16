@@ -1,7 +1,7 @@
 # Order Provenance Dataset
 
-Why each purchase order was placed in multi-supplier stockrooms: 1,500 synthetic stockrooms, 13,303 items,
-662,650 purchase orders over 700 days, with periodic stock counts and weekly sales.
+Why each purchase order was placed in multi-supplier stockrooms: 1,500 synthetic stockrooms, 13,513 items,
+587,174 purchase orders over 700 days, with periodic stock counts and weekly sales.
 
 Every order carries a hidden cause: a scheduled periodic review, the item's own reorder point, or being swept
 into a purchase order that was opened for another item of the same supplier. When an order was swept in, the

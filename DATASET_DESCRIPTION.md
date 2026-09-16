@@ -10,13 +10,13 @@ The labels are the provenance of each order. When an order was swept in, the lab
 
 - Raw files: 12
 - Stockrooms (cases): 1,500, each run by its own buyer, so every stockroom is an independent unit
-- Items: 13,303, 6 to 12 per stockroom, every supplier of a stockroom holding at least one item
-- Suppliers: 2 to 4 per stockroom, with hidden lead times of 2 to 10 days, 0 to 3 days of jitter and a hidden consolidation window of 0 to 3 days
-- Orders: 662,650, about 442 per stockroom
-- Stock counts: 154,277, on a cadence of 45, 60 or 90 days drawn once per stockroom and phase-staggered across its items, recorded with 15 percent multiplicative error
-- Weekly sales records: 1,330,300, 100 weeks per item
+- Items: 13,513, 6 to 12 per stockroom, every supplier of a stockroom holding at least one item
+- Suppliers: 2 to 4 per stockroom, with hidden lead times of 2 to 10 days, 0 to 3 days of jitter, a hidden consolidation window of 0 to 3 days and a hidden line cap of 2 to 6 orders per purchase order
+- Orders: 587,174, about 391 per stockroom, placed only on two or three fixed weekdays per stockroom
+- Stock counts: 158,459, on a cadence of 45, 60 or 90 days drawn once per stockroom and phase-staggered across its items, recorded with 15 percent multiplicative error
+- Weekly sales records: 1,351,300, 100 weeks per item
 - Observation window: days 0 to 699
-- Provenance mix: 32.9 percent periodic_review, 38.3 percent reorder_point, 28.8 percent swept into another order
+- Provenance mix: 36.5 percent periodic_review, 38.9 percent reorder_point, 24.6 percent swept into another order
 - Review cycles: 7, 14, 21 or 28 days, on about half the items
 - Prepared split: 1,200 training stockrooms, 300 test stockrooms (every fifth stockroom in hashed-id order)
 - Data origin: creator-generated synthetic data
@@ -42,11 +42,11 @@ The uploaded ZIP is flat and contains exactly these twelve files at its root:
 
 Every draw and every identifier comes from HMAC-SHA256 keyed to a withheld 256-bit secret; the generator code and the secret are not released. Each stockroom is drawn independently.
 
-1. **Setup.** Draw 2 to 4 suppliers, each with a lead time of 2 to 10 days, jitter of 0 to 3 days and a consolidation window of 0 to 3 days. Draw 6 to 12 items, assigned to the suppliers so that every supplier holds at least one item, with a demand rate between 2 and 40 units a day, an annual seasonal swing and an occasional burst. About half the items get a review cycle of 7, 14, 21 or 28 days with an offset and a review level of 0.7, 0.85 or 1.0 times the order-up-to level. Every item gets a reorder point, an order-up-to level and a case pack; about 60 percent also get a can-order level between the reorder point and the order-up-to level.
+1. **Setup.** Draw two or three ordering weekdays for the stockroom. Draw 2 to 4 suppliers, each with a lead time of 2 to 10 days, jitter of 0 to 3 days, a consolidation window of 0 to 3 days and a line cap of 2, 3, 4 or 6 orders per purchase order. Draw 6 to 12 items, assigned to the suppliers so that every supplier holds at least one item, with a demand rate between 2 and 40 units a day, an annual seasonal swing and an occasional burst. About half the items get a review cycle of 7, 14, 21 or 28 days with an offset and a review level of 0.7, 0.85 or 1.0 times the order-up-to level. Every item gets a reorder point, an order-up-to level and a case pack; about 80 percent also get a can-order level 20, 35 or 50 percent of the way from the reorder point to the order-up-to level.
 2. **Each day.** Receive arrivals, draw Poisson demand and sell what is on hand. Then compute the stock position, which is on hand plus what is on order.
-3. **Own-triggered orders.** An item on a review cycle whose review day has come and whose position is below its review level is ordered as `periodic_review`; the review is run 1 to 3 days late with a probability of 0.2, 0.35 or 0.5. Otherwise an item whose position has reached its reorder point, compared with a 15 percent buyer tolerance, is ordered as `reorder_point`, held over to the next day with a probability of 0, 0.2 or 0.4.
-4. **Purchase orders and sweeping.** The first own-triggered order for a supplier with no open purchase order opens one, which stays open through that day plus the supplier's window. While a purchase order is open, items of that supplier whose position is at or below their can-order level, again with a 15 percent tolerance, are swept into it and labelled `pulled_by:<the order that opened it>`; 0, 10 or 20 percent of eligible items are missed. Later own-triggered orders for that supplier join the open purchase order and keep their own cause.
-5. **Keying and quantities.** The day's orders are keyed in one session starting between 08:00 and 12:00, 1 to 12 minutes apart, with swept-in orders keyed at a random later point of the session. The quantity is the order-up-to level minus the position, jittered by 5 to 15 percent and rounded up to the case pack.
+3. **Own-triggered orders.** An item on a review cycle whose review day has come and whose position is below its review level becomes due as `periodic_review`; the review is run 1 to 3 days late with a probability of 0.2, 0.35 or 0.5. Otherwise an item whose position has reached its reorder point, compared with a 15 percent buyer tolerance, becomes due as `reorder_point`, held over one day with a probability of 0, 0.2 or 0.4. A due item is placed on the next ordering weekday.
+4. **Purchase orders and sweeping.** The first own-triggered order for a supplier with no open purchase order opens one, which stays open through that day plus the supplier's window and holds at most the supplier's line cap. While a purchase order is open and has room, items of that supplier whose position is at or below their can-order level, again with a 15 percent tolerance, are swept into it and labelled `pulled_by:<the order that opened it>`; 0, 10 or 20 percent of eligible items are missed. Later own-triggered orders for that supplier join the open purchase order while it has room and keep their own cause; when it is full, the next one opens a second purchase order, which sweeps in the items still waiting.
+5. **Keying and quantities.** The day's orders are keyed in one session starting between 08:00 and 12:00, 1 to 12 minutes apart, with swept-in orders keyed at a random later point of the session. The quantity is the order-up-to level minus the position, jittered by 15 to 35 percent and rounded up to the case pack.
 6. **Observation.** Publish only the order book, the stock counts (true on hand times a uniform factor between 0.85 and 1.15, on a cadence of 45, 60 or 90 days drawn once per stockroom and staggered across its items) and weekly sales totals. All settings, thresholds, cycles, windows and lead times stay hidden.
 
 ## Intended Use And Limitations
